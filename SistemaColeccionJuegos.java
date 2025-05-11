@@ -1,7 +1,7 @@
 import java.sql.*;
 import java.util.*;
 
-public class PruebaMYSQL {
+public class SistemaColeccionJuegos {
     public static String admin="";
     public static int userID;
     static Connection conexion = null;
@@ -14,12 +14,12 @@ public class PruebaMYSQL {
                 login();
                 if (admin.equalsIgnoreCase("user")){
                     userType=1;
-                    PruebaMYSQL menuSystem = new PruebaMYSQL(userType);
+                    SistemaColeccionJuegos menuSystem = new SistemaColeccionJuegos(userType);
                     menuSystem.handleUserInput();
                 }
                 else {
                     userType=0;
-                    PruebaMYSQL menuSystem = new PruebaMYSQL(userType);
+                    SistemaColeccionJuegos menuSystem = new SistemaColeccionJuegos(userType);
                     menuSystem.handleUserInput();
                 }
             }
@@ -112,7 +112,7 @@ public class PruebaMYSQL {
         }
     }
     // Constructor para la interfaz en consola
-    public PruebaMYSQL(int userType) {
+    public SistemaColeccionJuegos(int userType) {
         loadMenuItems(userType);
     }
 
