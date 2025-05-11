@@ -194,7 +194,7 @@ public class PruebaMYSQL {
         // Mostrar opciones numeradas
         for (int i = 0; i < menuOptions.size(); i++) {
             MenuItem item = menuOptions.get(i);
-            System.out.println((i + 1) + ". " + item.getMenuText() + " [" + item.getMenu() + "]");
+            System.out.println((i + 1) + ". " + item.getMenuText());
         }
 
         System.out.println("\n0. Volver al menú principal");
