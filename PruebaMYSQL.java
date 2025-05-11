@@ -1025,7 +1025,6 @@ public class PruebaMYSQL {
         String cond  =  "user_id = $usuario \n" +
                 "AND game_collection.game_id = games.game_id AND activo =1";
         cond = cond.replace("$usuario",String.format("%d", userID));
-        System.out.println(cond);
         despliegaTabla(tabla,campos,cond);
 
 
