@@ -1,27 +1,27 @@
 import java.sql.*;
-import java.util.Scanner;
+import java.util.*;
 
 public class PruebaMYSQL {
     public static String admin="";
     public static int userID;
     static Connection conexion = null;
+    public static int userType;
+    private Map<Integer, List<MenuItem>> menuItemsByCategory = new HashMap<Integer, List<MenuItem>>();
     public static void main(String[] args) {
         try {
             ConectarABaseD();
             if (conexion!=null) {
-                //AgregarUsuario();
-                //AgregarPlataforma();
-                //EliminarUsuario();
-                //EliminarPlataforma();
-                //ModificarPlataforma();
-                //EliminarJuego();
-                //ModificarUsuario();
-                //ModificarJuego();
                 login();
-                //modificaPassword();
-                //CapturarRating();
-                //ModificarRating();
-                EliminarRating();
+                if (admin.equalsIgnoreCase("admin")){
+                    userType=0;
+                    PruebaMYSQL menuSystem = new PruebaMYSQL(userType);
+                    menuSystem.handleUserInput();
+                }
+                else {
+                    userType=1;
+                    PruebaMYSQL menuSystem = new PruebaMYSQL(userType);
+                    menuSystem.handleUserInput();
+                }
             }
             try {
                 if (conexion != null){
@@ -34,6 +34,7 @@ public class PruebaMYSQL {
             System.err.println("Error al insertar: " + s.getMessage());
         }
     }
+    // Funciones de conexión y login para la base de datos
     public static void ConectarABaseD() {
         String url = "jdbc:mysql://localhost:3306/videogame_collection";
         String mysqlUser = "root";
@@ -67,7 +68,7 @@ public class PruebaMYSQL {
                 login.setString(1, uName);
                 login.setString(2, pwd);
                 ResultSet authorized = login.executeQuery();
-                if (authorized.next() == true) {
+                if (authorized.next()) {
                     userID = authorized.getInt("user_id");
                     admin  = authorized.getString("access_type");
                     acceso = true;
@@ -86,6 +87,315 @@ public class PruebaMYSQL {
         }
     }
 
+    // Clase interna para representar una opción de menú
+    public static class MenuItem {
+        private int level;
+        private String menu;
+        private String menuText;
+
+        public MenuItem(int level, String menu, String menuText) {
+            this.level = level;
+            this.menu = menu;
+            this.menuText = menuText;
+        }
+
+        public int getLevel() {
+            return level;
+        }
+
+        public String getMenu() {
+            return menu;
+        }
+
+        public String getMenuText() {
+            return menuText;
+        }
+    }
+    // Constructor para la interfaz en consola
+    public PruebaMYSQL(int userType) {
+        loadMenuItems(userType);
+    }
+
+    // Funciones para la el funciomamiento de la interfaz en consola (
+    private void loadMenuItems(int userType) {
+        try {
+            String query = "SELECT level, menu, menu_text FROM menu WHERE admin = ? ORDER BY level";
+            try (PreparedStatement stmt = conexion.prepareStatement(query)) {
+                stmt.setInt(1, userType);
+                try (ResultSet rs = stmt.executeQuery()) {
+                    while (rs.next()) {
+                        int level = rs.getInt("level");
+                        String menu = rs.getString("menu");
+                        String menuText = rs.getString("menu_text");
+
+                        // Obtener la categoría (decena del nivel)
+                        int category = level / 10;
+
+                        // Agregar al mapa de categorías
+                        menuItemsByCategory.computeIfAbsent(category, k -> new ArrayList<>())
+                                .add(new MenuItem(level, menu, menuText));
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Error al cargar el menú: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+    // Metodo para mostrar el menú principal (categorías)
+    public void displayMenu() {
+        System.out.println("\n========== SISTEMA DE MENÚ ==========\n");
+        System.out.println("Seleccione una categoría:");
+
+        // Iterar por las categorías de forma ordenada
+        List<Integer> sortedCategories = new ArrayList<Integer>(menuItemsByCategory.keySet());
+        Collections.sort(sortedCategories);
+
+        int index = 1;
+        for (Integer category : sortedCategories) {
+            // Encontrar el título de la categoría (si existe)
+            String categoryTitle = findCategoryTitle(category);
+            if (categoryTitle != null) {
+                System.out.println(index + ". " + categoryTitle);
+            } else {
+                System.out.println(index + ". Categoría " + category);
+            }
+            index++;
+        }
+
+        System.out.println("\n0. Salir");
+        System.out.println("\n====================================");
+    }
+    // Metodo para mostrar las opciones de una categoría específica
+    public void displayCategoryOptions(int categoryIndex) {
+        List<Integer> sortedCategories = new ArrayList<Integer>(menuItemsByCategory.keySet());
+        Collections.sort(sortedCategories);
+
+        if (categoryIndex < 1 || categoryIndex > sortedCategories.size()) {
+            System.out.println("Categoría no válida.");
+            return;
+        }
+
+        int category = sortedCategories.get(categoryIndex - 1);
+        String categoryTitle = findCategoryTitle(category);
+
+        System.out.println("\n========== " + (categoryTitle != null ? categoryTitle : "Categoría " + category) + " ==========\n");
+
+        List<MenuItem> items = menuItemsByCategory.get(category);
+        List<MenuItem> menuOptions = new ArrayList<MenuItem>();
+
+        // Recolectar opciones (sin incluir los títulos de categoría)
+        for (MenuItem item : items) {
+            if (item.getLevel() % 10 != 0) {
+                menuOptions.add(item);
+            }
+        }
+
+        // Mostrar opciones numeradas
+        for (int i = 0; i < menuOptions.size(); i++) {
+            MenuItem item = menuOptions.get(i);
+            System.out.println((i + 1) + ". " + item.getMenuText() + " [" + item.getMenu() + "]");
+        }
+
+        System.out.println("\n0. Volver al menú principal");
+        System.out.println("\n====================================");
+
+        return;
+    }
+    // Metodo para encontrar el título de una categoría
+    private String findCategoryTitle(int category) {
+        List<MenuItem> items = menuItemsByCategory.get(category);
+        if (items != null) {
+            for (MenuItem item : items) {
+                // Los títulos de categoría suelen tener unidades 0
+                if (item.getLevel() == category * 10) {
+                    return item.getMenuText();
+                }
+            }
+        }
+        return null;
+    }
+    // Metodo para manejar la selección del usuario
+    public void handleUserInput() {
+        Scanner scanner = new Scanner(System.in);
+        boolean exit = false;
+
+        while (!exit) {
+            // Mostrar menú principal (categorías)
+            displayMenu();
+            System.out.print("\nSeleccione una categoría (0 para salir): ");
+
+            try {
+                int categoryChoice = scanner.nextInt();
+
+                if (categoryChoice == 0) {
+                    exit = true;
+                    System.out.println("¡Hasta pronto!");
+                    continue;
+                }
+
+                // Obtener la categoría seleccionada
+                List<Integer> sortedCategories = new ArrayList<Integer>(menuItemsByCategory.keySet());
+                Collections.sort(sortedCategories);
+
+                if (categoryChoice < 1 || categoryChoice > sortedCategories.size()) {
+                    System.out.println("Categoría no válida.");
+                    pressEnterToContinue(scanner);
+                    continue;
+                }
+
+                int selectedCategory = sortedCategories.get(categoryChoice - 1);
+
+                // Submenu - Mostrar opciones de la categoría seleccionada
+                boolean backToMainMenu = false;
+                while (!backToMainMenu) {
+                    // Mostrar opciones de la categoría
+                    displayCategoryOptions(categoryChoice);
+
+                    System.out.print("\nSeleccione una opción (0 para volver): ");
+                    int optionChoice = scanner.nextInt();
+
+                    if (optionChoice == 0) {
+                        backToMainMenu = true;
+                        continue;
+                    }
+
+                    // Obtener las opciones de la categoría seleccionada
+                    List<MenuItem> categoryItems = menuItemsByCategory.get(selectedCategory);
+                    List<MenuItem> menuOptions = new ArrayList<MenuItem>();
+
+                    // Filtrar solo las opciones (sin incluir títulos de categoría)
+                    for (MenuItem item : categoryItems) {
+                        if (item.getLevel() % 10 != 0) {
+                            menuOptions.add(item);
+                        }
+                    }
+
+                    if (optionChoice < 1 || optionChoice > menuOptions.size()) {
+                        System.out.println("Opción no válida.");
+                        pressEnterToContinue(scanner);
+                        continue;
+                    }
+
+                    // Obtener la opción seleccionada
+                    MenuItem selectedItem = menuOptions.get(optionChoice - 1);
+
+                    // Ejecutar la acción correspondiente
+                    executeAction(selectedItem.getMenu(), selectedItem);
+
+                    pressEnterToContinue(scanner);
+                }
+
+            } catch (InputMismatchException e) {
+                System.out.println("Por favor, ingrese un número válido.");
+                scanner.nextLine(); // Limpiar el buffer
+                pressEnterToContinue(scanner);
+            }
+        }
+
+        scanner.close();
+    }
+    // Metodo para ejecutar la acción correspondiente según el código de menú
+    private void executeAction(String menuCode, MenuItem menuItem) {
+        System.out.println("\n======================================");
+        System.out.println("Ejecutando: " + menuItem.getMenuText() + " [" + menuCode + "]");
+        System.out.println("======================================");
+
+        // Usar switch para ejecutar la acción correspondiente según el código de menú
+        switch (menuCode) {
+            // Opciones de Usuario (admin)
+            case "ADD_USER":
+                AgregarUsuario();
+                break;
+            case "MOD_USER":
+                ModificarUsuario();
+                break;
+            case "DEL_USER":
+                EliminarUsuario();
+                break;
+            case "MOD_PASSW":
+                modificaPassword();
+                break;
+
+            // Opciones de Plataforma
+            case "ADD_PLAT":
+                AgregarPlataforma();
+                break;
+            case "MOD_PLAT":
+                ModificarPlataforma();
+                break;
+            case "DEL_PLAT":
+                EliminarPlataforma();
+                break;
+
+            // Opciones de Juego
+            case "ADD_GAME":
+                AgregarJuego();
+                break;
+            case "MOD_GAME":
+                ModificarJuego();
+                break;
+            case "DEL_GAME":
+                EliminarJuego();
+                break;
+
+            // Opciones de Rating
+            case "ADD_RATING":
+                CapturarRating();
+                break;
+            case "MOD_RATING":
+                ModificarRating();
+                break;
+            case "DEL_RATING":
+                EliminarRating();
+                break;
+            case "TOP_5_PROM":
+                String t,c,w;
+                t = "games JOIN platform ON games.platform_id = platform.platform_id ";
+                c = "games.game_name, platform.platform_name, games.promedio_rating ";
+                w = "games.activo=1 ".concat("\n ORDER BY games.promedio_rating DESC \n ").concat("LIMIT 10");
+                despliegaTabla(t,c,w);
+                break;
+
+            case "TOP_10":
+                String t1,c1,w1;
+                t1 = "games JOIN platform ON games.platform_id = platform.platform_id ";
+                c1 = "games.game_name, platform.platform_name, games.cantidad_usuarios ";
+                w1 = "games.activo=1".concat("\n ORDER BY games.cantidad_usuarios DESC \n ").concat("LIMIT 10");
+                despliegaTabla(t1,c1,w1);
+                break;
+            case "LIST_GAMES":
+                String campos = "games.game_name,platform.platform_name, game_collection.rating";
+                String tabla = "game_collection, games JOIN platform ON games.platform_id = platform.platform_id ";
+                String cond  =  "user_id = $usuario \n" +
+                        "AND game_collection.game_id = games.game_id AND games.activo =1";
+                cond = cond.replace("$usuario",String.format("%d", userID));
+                despliegaTabla(tabla,campos,cond);
+               break;
+
+            // Opciones de menú (categorías)
+            case "MENU_USER":
+            case "MENU_RATING":
+                // Estas son opciones de categoría, no requieren acción
+                System.out.println("Esta es una categoría de menú, no una acción ejecutable.");
+                break;
+
+            default:
+                System.out.println("Acción no implementada: " + menuCode);
+                break;
+        }
+    }
+    // Metodo auxiliar para esperar que el usuario presione Enter
+    private void pressEnterToContinue(Scanner scanner) {
+        System.out.println("\nPresione Enter para continuar...");
+        scanner.nextLine(); // Consumir la nueva línea pendiente
+        if (scanner.hasNextLine()) {
+            scanner.nextLine(); // Esperar input
+        }
+    }
+    // )
+
+    // Funciones para la gestion de usuarios
     public static void AgregarUsuario() {
         System.out.println("***Agregar nuevo usuario ***");
         Scanner scan = new Scanner(System.in);
@@ -155,15 +465,15 @@ public class PruebaMYSQL {
     public static void ModificarUsuario(){
         String t, c, w;
         t = "users";
-        c = "user_id,username,password,email,preferred_platform_id,access_type";
-        w = "activo=1";
+        c = "user_id,username,password,email,preferred_platform_id,access_type,activo";
+        w = "1";
         despliegaTabla(t, c, w);
         Scanner scan = new Scanner(System.in);
         System.out.print("ID de usuario a modificar:");
         int idUsuario = scan.nextInt();
         if (idUsuario >0) {
             try {
-                String SQL = "SELECT username,email,preferred_platform_id,access_type "
+                String SQL = "SELECT username,email,preferred_platform_id,access_type,activo "
                         + "FROM users "
                         + "WHERE users.user_id = ?";
                 PreparedStatement statement = conexion.prepareStatement(SQL);
@@ -172,19 +482,23 @@ public class PruebaMYSQL {
                 String email="";
                 int preferred_platform = 0;
                 String accessType="";
+                String active ="";
                 ResultSet rs = statement.executeQuery();
                 while(rs.next()) {
                     user = rs.getString("username");
                     email= rs.getString("email");
                     preferred_platform = rs.getInt("preferred_platform_id");
                     accessType= rs.getString("access_type");
+                    active= rs.getString("activo");
            
                 }
                 System.out.println("username:"+user);
                 System.out.println("email:"+email);
                 System.out.println("Preferred platform:"+ preferred_platform);
                 System.out.println("access_type:"+accessType);
+                System.out.println("activo: "+active);
                 String newUser, newEmail,newPreferred,newAcess;
+                String newActivo = active;
                 Scanner sc = new Scanner(System.in);
                 System.out.print("Nuevo username:");
                 newUser = sc.nextLine();
@@ -195,6 +509,13 @@ public class PruebaMYSQL {
                 newPreferred = sc.nextLine();
                 System.out.print("Nuevo access type:");
                 newAcess = sc.nextLine();
+                if (active.equalsIgnoreCase("0")){
+                    System.out.println("¿Desea volver agregar al Usuario?: (si/no)");
+                    String respuesta = sc.nextLine();
+                    if (respuesta.equalsIgnoreCase("si")) {
+                        newActivo = "1";
+                    }
+                }
                 String campos = "";
                 if (!newUser.isEmpty()) {
                     campos = "username = '$user' ";
@@ -211,6 +532,10 @@ public class PruebaMYSQL {
                         campos = campos + ", access_type = '$a' ";
                         campos = campos.replace("$a",newAcess);
                     }
+                    if (!newActivo.isEmpty()) {
+                        campos = campos + ", activo = '$ac' ";
+                        campos = campos.replace("$ac",newActivo);
+                    }
 
                 } else {
                     if (!newEmail.isEmpty()) {
@@ -224,15 +549,38 @@ public class PruebaMYSQL {
                             campos = campos + ", access_type = '$a' ";
                             campos = campos.replace("$a",newAcess);
                         }
+                        if (!newActivo.isEmpty()) {
+                            campos = campos + ", activo = '$ac' ";
+                            campos = campos.replace("$ac",newActivo);
+                        }
                     } else {
                         if (!newPreferred.isEmpty()) {
                             campos = campos + "preferred_platform_id = '$pp'";
                             campos = campos.replace("$pp",newPreferred);
 
-                        }
-                        if (!newAcess.isEmpty()) {
-                            campos = campos + "access_type = '$a' ";
-                            campos = campos.replace("$a",newAcess);
+                            if (!newAcess.isEmpty()) {
+                                campos = campos + "access_type = '$a' ";
+                                campos = campos.replace("$a",newAcess);
+                            }
+                            if (!newActivo.isEmpty()) {
+                                campos = campos + ", activo = '$ac' ";
+                                campos = campos.replace("$ac",newActivo);
+                            }
+
+                        }else {
+                            if (!newAcess.isEmpty()) {
+                                campos = campos + "access_type = '$a' ";
+                                campos = campos.replace("$a",newAcess);
+                                if (!newActivo.isEmpty()) {
+                                    campos = campos + ",activo = '$ac' ";
+                                    campos = campos.replace("$ac",newActivo);
+                                }
+                            }else {
+                            if (!newActivo.isEmpty()) {
+                                campos = campos + "activo = '$ac' ";
+                                campos = campos.replace("$ac",newActivo);
+                            }
+                            }
                         }
                     }
                 }
@@ -261,7 +609,7 @@ public class PruebaMYSQL {
             String t,c,w;
             t = "users";
             c = "user_id, username, password";
-            w = "1";
+            w = "users.activo=1";
             despliegaTabla(t,c,w);
             Scanner scan = new Scanner(System.in);
             System.out.print("ID de usuario a modificar:");
@@ -302,8 +650,15 @@ public class PruebaMYSQL {
             System.out.println("la contraseña debe contar con más de 4 caracteres!");
         }
     }
+
+    // Funciones para la gestion de plataformas
     public static void AgregarPlataforma(){
         System.out.println("***Agregar plataforma ***");
+        String t, c, w;
+        t = "platform";
+        c = "platform_id,platform_name,activo";
+        w = "1";
+        despliegaTabla(t, c, w);
         Scanner scan = new Scanner(System.in);
         System.out.print("Plataforma: ");
         String plataforma = scan.nextLine();
@@ -332,7 +687,7 @@ public class PruebaMYSQL {
         System.out.println("***Eliminar plataforma ***");
         String t, c, w;
         t = "platform";
-        c = "*";
+        c = "platform_id,platform_name";
         w = "activo=1";
         despliegaTabla(t, c, w);
         Scanner scan = new Scanner(System.in);
@@ -360,34 +715,80 @@ public class PruebaMYSQL {
         System.out.println("***Modificar plataforma ***");
         String t, c, w;
         t = "platform";
-        c = "platform_id,platform_name";
-        w = "activo=1";
+        c = "platform_id,platform_name,activo";
+        w = "1";
         despliegaTabla(t, c, w);
         Scanner scan = new Scanner(System.in);
         System.out.print("ID de Plataforma a modificar:");
         int idPlataforma = scan.nextInt();
-        scan.nextLine();
-        System.out.print("Ingresa el nuevo nombre de la plataforma");
-        String nuevo_nombre = scan.nextLine();
         if (idPlataforma > 0) {
             try {
-                String SQL = "UPDATE platform SET platform_name = ? "
+                String SQL = "SELECT platform_name, activo "
+                        + "FROM platform "
                         + "WHERE platform.platform_id = ?";
                 PreparedStatement statement = conexion.prepareStatement(SQL);
-                statement.setString(1, nuevo_nombre);
-                statement.setInt(2, idPlataforma);
+                statement.setInt(1, idPlataforma);
+                String platform = "";
+                String activo = "";
+                ResultSet rs = statement.executeQuery();
+                while (rs.next()) {
+                    platform = rs.getString("platform_name");
+                    activo = rs.getString("activo");
 
-                if (actualizaBaseDatos(statement)) {
-                    System.out.println("Plataforma modificada exitosamente");
-                } else {
-                    System.out.println("La plataforma no fue modificada");
+                }
+                System.out.println(statement.toString());
+                System.out.println("platform:" + platform);
+                System.out.println("activo:" + activo);
+                String newPlatform;
+                String newActivo = activo;
+                Scanner sc = new Scanner(System.in);
+                System.out.print("Nueva Plataforma:");
+                newPlatform = sc.nextLine();
+                if (activo.equalsIgnoreCase("0")){
+                System.out.print("¿Deseas volver agregarlo? (si/no) :");
+                String respuesta = sc.nextLine();
+                if (respuesta.equalsIgnoreCase("si")){
+                    newActivo = "1";
+                }
+                }
+                String campos = "";
+                if (!newPlatform.isEmpty()) {
+                    campos = "platform_name = '$pl' ";
+                    campos = campos.replace("$pl", newPlatform);
+                    if (!newActivo.isEmpty()) {
+                        campos = campos + ", activo ='$a' ";
+                        campos = campos.replace("$a",newActivo);
+                    }
+                }
+                else {
+                    if (!newActivo.isEmpty()) {
+                        campos = "activo = '$a' ";
+                        campos = campos.replace("$a", newActivo);
+                    }
+                }
+                System.out.println("longitud de campos:(" + campos.length() + ")|" + campos);
+                if (!campos.isEmpty()) {
+                    SQL = "UPDATE platform SET "
+                            + campos + "WHERE platform_id = ?";
+                    statement = conexion.prepareStatement(SQL);
+                    statement.setInt(1, idPlataforma);
+
+                    if (actualizaBaseDatos(statement)) {
+                        System.out.println("Plataforma modificada exitosamente");
+                    } else {
+                        System.out.println("La plataforma no fue modificada");
+                    }
                 }
             } catch (SQLException s) {
                 System.out.println(s.getMessage());
             }
         }
     }
+
+    // Funciones para la gestion de juegos
     public static void AgregarJuego(){
+        System.out.println("Lista de Juegos Agregados");
+        despliegaTabla("games JOIN platform ON games.platform_id = platform.platform_id","game_name,platform.platform_name","1");
         System.out.println("***Agregar nuevo juego ***");
         Scanner scan = new Scanner(System.in);
         System.out.print("Game name:");
@@ -408,16 +809,13 @@ public class PruebaMYSQL {
             statement.setInt(3, year);;
             statement.setString(4, imageUrl);
 
-            //System.out.println("-> URL BD: " + conexion.getMetaData().getURL());
-            //System.out.println("-> Autocommit: " + conexion.getAutoCommit());
-            //System.out.println("-> SQL con parámetros: " + statement);
-
             System.out.println(statement.toString());
-            statement.executeUpdate();
-            if (!conexion.getAutoCommit()) {
-                conexion.commit();
-                System.out.println("-> Commit manual realizado");
+            if (actualizaBaseDatos(statement)) {
+                System.out.println("Juego Agregado exitosamente");
+            } else {
+                System.out.println("El juego no fue agregado");
             }
+
         } catch (SQLException s) {
             System.out.println(s.getMessage());
         }
@@ -453,15 +851,15 @@ public class PruebaMYSQL {
     public static void ModificarJuego(){
         String t, c, w;
         t = "games";
-        c = "game_id,game_name,platform_id,year_released,image_url";
-        w = "activo=1";
+        c = "game_id,game_name,platform_id,year_released,image_url,activo";
+        w = "1";
         despliegaTabla(t, c, w);
         Scanner scan = new Scanner(System.in);
         System.out.print("ID de juego a modificar:");
         int idUsuario = scan.nextInt();
         if (idUsuario >0) {
             try {
-                String SQL = "SELECT game_name,platform_id,year_released,image_url "
+                String SQL = "SELECT game_name,platform_id,year_released,image_url,activo "
                         + "FROM games "
                         + "WHERE games.game_id = ?";
                 PreparedStatement statement = conexion.prepareStatement(SQL);
@@ -470,29 +868,40 @@ public class PruebaMYSQL {
                 int platform = 0;
                 int year = 0;
                 String image = "";
+                String activo ="";
                 ResultSet rs = statement.executeQuery();
                 while (rs.next()) {
                     game = rs.getString("game_name");
                     platform = rs.getInt("platform_id");
                     year = rs.getInt("year_released");
                     image = rs.getString("image_url");
+                    activo=rs.getString("activo");
 
                 }
                 System.out.println("game name:" + game);
                 System.out.println("platfotm id:" + platform);
                 System.out.println("year released:" + year);
                 System.out.println("image url:" + image);
+                System.out.println("activo:"+ activo);
                 String newGame, newPlatform, newYear, newImage;
+                String newActivo = activo;
                 Scanner sc = new Scanner(System.in);
                 System.out.print("Nuevo Juego:");
                 newGame = sc.nextLine();
-                despliegaTabla("platform", "platform_id,platform_name", "1");
+                despliegaTabla("platform", "platform_id,platform_name", "activo=1");
                 System.out.print("Nueva Plataforma:");
                 newPlatform = sc.nextLine();
                 System.out.print("Nuevo Anio lanzamiento:");
                 newYear = sc.nextLine();
                 System.out.print("Nuevo imagen url:");
                 newImage = sc.nextLine();
+                if (activo.equalsIgnoreCase("0")){
+                System.out.print("Desea volver agregar este juego?: (si/no)");
+                String respuesta = sc.nextLine();
+                if (respuesta.equalsIgnoreCase("si")) {
+                    newActivo = "1";
+                }
+                }
                 String campos = "";
                 if (!newGame.isEmpty()) {
                     campos = "game_name = '$game' ";
@@ -509,6 +918,10 @@ public class PruebaMYSQL {
                         campos = campos + ", image_url = '$i' ";
                         campos = campos.replace("$i", newImage);
                     }
+                    if (!newActivo.isEmpty()){
+                        campos = campos + ", activo = '$ac' ";
+                        campos = campos.replace("$ac", newActivo);
+                    }
 
                 } else {
                     if (!newPlatform.isEmpty()) {
@@ -521,16 +934,39 @@ public class PruebaMYSQL {
                         if (!newImage.isEmpty()) {
                             campos = campos + ", image_url = '$i' ";
                             campos = campos.replace("$i", newImage);
+
+                        }
+                        if (!newActivo.isEmpty()){
+                            campos = campos + ", activo = '$ac' ";
+                            campos = campos.replace("$ac", newActivo);
                         }
                     } else {
                         if (!newYear.isEmpty()) {
-                            campos = campos + "year_released = '$yr'";
+                            campos ="year_released = '$yr'";
                             campos = campos.replace("$yr", newYear);
+                            if (!newImage.isEmpty()) {
+                                campos = campos + "image_url = '$i' ";
+                                campos = campos.replace("$i", newImage);
+                            }
+                            if (!newActivo.isEmpty()){
+                                campos = campos + ", activo = '$ac' ";
+                                campos = campos.replace("$ac", newActivo);
+                            }
 
-                        }
+                        }else {
                         if (!newImage.isEmpty()) {
-                            campos = campos + "image_url = '$i' ";
+                            campos ="image_url = '$i' ";
                             campos = campos.replace("$i", newImage);
+                            if (!newActivo.isEmpty()){
+                                campos =campos+ ", activo = '$ac' ";
+                                campos = campos.replace("$ac", newActivo);
+                            }
+                        }else {
+                        if (!newActivo.isEmpty()){
+                            campos ="activo = '$ac' ";
+                            campos = campos.replace("$ac", newActivo);
+                        }
+                        }
                         }
                     }
                 }
@@ -553,6 +989,8 @@ public class PruebaMYSQL {
         }
 
     }
+
+    // Funciones para la gestion del Rating del juego
     public static void CapturarRating(){
         System.out.println("***Capturar coleccion ***");
         System.out.println("Juegos a rankear");
@@ -564,7 +1002,7 @@ public class PruebaMYSQL {
                     + "games.game_name, platform.platform_name, "
                     + "games.year_released, "+"games.image_url";
             String tabla = "games".concat("\n JOIN platform ON games.platform_id = platform.platform_id ");
-            String cond  = "game_name LIKE '%$palabra%' ORDER BY game_name ASC LIMIT 0,10";
+            String cond  = "games.activo=1 AND game_name LIKE '%$palabra%' ORDER BY game_name ASC LIMIT 0,10";
             cond = cond.replace("$palabra",cadena);
             despliegaTabla(tabla,campos,cond);
 
@@ -627,6 +1065,8 @@ public class PruebaMYSQL {
         }
 
     }
+
+    // Funciones Transactions
     public static void transactionInsert( String gameID, int rating) {
         try {
             // Select
@@ -827,6 +1267,18 @@ public class PruebaMYSQL {
         }
         return exito;
     }
+    public static ResultSet transactionSelect(PreparedStatement inst){
+        ResultSet result = null;
+        try {
+            //System.out.println("SQL:"+inst.toString());
+            result = inst.executeQuery();
+        } catch (SQLException s){
+            s.printStackTrace();
+        }
+        return result;
+    }
+
+    // Otras funciones
     public static void despliegaResultados(ResultSet resultados, String tabla) {
         System.out.println("Tabla:"+tabla);
         try {
@@ -848,16 +1300,6 @@ public class PruebaMYSQL {
         }  catch (SQLException s){
             s.printStackTrace();
         }
-    }
-    public static ResultSet transactionSelect(PreparedStatement inst){
-        ResultSet result = null;
-        try {
-            //System.out.println("SQL:"+inst.toString());
-            result = inst.executeQuery();
-        } catch (SQLException s){
-            s.printStackTrace();
-        }
-        return result;
     }
     public static void despliegaTabla(String tabla, String columna,String condicion) {
         try {
