@@ -12,13 +12,13 @@ public class PruebaMYSQL {
             ConectarABaseD();
             if (conexion!=null) {
                 login();
-                if (admin.equalsIgnoreCase("admin")){
-                    userType=0;
+                if (admin.equalsIgnoreCase("user")){
+                    userType=1;
                     PruebaMYSQL menuSystem = new PruebaMYSQL(userType);
                     menuSystem.handleUserInput();
                 }
                 else {
-                    userType=1;
+                    userType=0;
                     PruebaMYSQL menuSystem = new PruebaMYSQL(userType);
                     menuSystem.handleUserInput();
                 }
