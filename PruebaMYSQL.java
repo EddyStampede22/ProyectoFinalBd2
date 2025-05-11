@@ -116,7 +116,7 @@ public class PruebaMYSQL {
         loadMenuItems(userType);
     }
 
-    // Funciones para la el funciomamiento de la interfaz en consola (
+    // Funciones para el funciomamiento de la interfaz en consola (
     private void loadMenuItems(int userType) {
         try {
             String query = "SELECT level, menu, menu_text FROM menu WHERE admin = ? ORDER BY level";
