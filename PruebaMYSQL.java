@@ -426,10 +426,10 @@ public class PruebaMYSQL {
             //System.out.println("-> SQL con parámetros: " + statement);
 
             System.out.println(statement.toString());
-            statement.executeUpdate();
-            if (!conexion.getAutoCommit()) {
-                conexion.commit();
-                System.out.println("-> Commit manual realizado");
+            if (actualizaBaseDatos(statement)) {
+                System.out.println("Usuario Agregado exitosamente");
+            } else {
+                System.out.println("El usuario no fue agregado");
             }
         } catch (SQLException s) {
             System.out.println(s.getMessage());
@@ -438,7 +438,7 @@ public class PruebaMYSQL {
     public static void EliminarUsuario() {
         String t, c, w;
         t = "users";
-        c = "*";
+        c = "user_id,username,password,email,preferred_platform_id,access_type";
         w = "activo=1";
         despliegaTabla(t, c, w);
         Scanner scan = new Scanner(System.in);
@@ -673,11 +673,12 @@ public class PruebaMYSQL {
             //System.out.println("-> SQL con parámetros: " + statement);
 
             System.out.println(statement.toString());
-            statement.executeUpdate();
-            if (!conexion.getAutoCommit()) {
-                conexion.commit();
-                System.out.println("-> Commit manual realizado");
+            if (actualizaBaseDatos(statement)) {
+                System.out.println("Plataforma Agregada exitosamente");
+            } else {
+                System.out.println("La plataforma no fue agregada");
             }
+
         } catch (SQLException s) {
             System.out.println(s.getMessage());
         }
