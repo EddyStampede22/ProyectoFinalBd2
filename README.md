@@ -3,7 +3,7 @@
 ## Integrantes del Equipo:
 ### Martinez Pimbert Jose Eduardo
 
-## Instrucciones para compilación y Ejecucción correcta del programa:
+## Instrucciones para compilación y ejecucción correcta del programa SistemaColeccionJuegos.java :
 ---
 
 ## 1. Requisitos Previos
