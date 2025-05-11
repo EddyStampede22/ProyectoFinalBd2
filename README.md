@@ -4,8 +4,6 @@
 ### Martinez Pimbert Jose Eduardo
 
 ## Instrucciones para compilación y Ejecucción correcta del programa:
-Estas instrucciones te guiarán paso a paso para compilar y ejecutar el programa de consola **SistemaColeccionJuegos**.
-
 ---
 
 ## 1. Requisitos Previos
