@@ -143,6 +143,6 @@ Desde `src/`, ejecuta:
   - Implementa un `Makefile` o scripts `.sh`/`.bat` para automatizar compilación y ejecución.
   - Considera usar un gestor de dependencias (Maven/Gradle) para manejar el conector JDBC.
 
-- ### En este proyecto se hizo uso de Asistentes Digitales (ChatGTP y Claude). Al igual que el programa también está basado en el programa PruebAccesoMYSQL.java que encontrarás en el repositorio.
+- ### En este proyecto se hizo uso de Asistentes Digitales (ChatGTP y Claude). Al igual que el programa `SistemaColeccionJuegos.java` también toma referencias de `PruebAccesoMYSQL.java` que encontrarás en el repositorio.
 
 
