@@ -353,7 +353,7 @@ public class SistemaColeccionJuegos {
                 String t,c,w;
                 t = "games JOIN platform ON games.platform_id = platform.platform_id ";
                 c = "games.game_name, platform.platform_name, games.promedio_rating ";
-                w = "games.activo=1 ".concat("\n ORDER BY games.promedio_rating DESC \n ").concat("LIMIT 10");
+                w = "games.activo=1 ".concat("\n ORDER BY games.promedio_rating DESC \n ").concat("LIMIT 5");
                 despliegaTabla(t,c,w);
                 break;
 
@@ -799,6 +799,7 @@ public class SistemaColeccionJuegos {
         int platformId = scan.nextInt();
         System.out.print("Year released:");
         int year = scan.nextInt();
+        scan.nextLine();
         System.out.print("Image Url: ");
         String imageUrl = scan.nextLine();
         try {
@@ -1034,6 +1035,7 @@ public class SistemaColeccionJuegos {
 
         System.out.print("Rating:");
         int rating =  scan.nextInt();
+        scan.nextLine();
         transactionUpdate(gameID,rating);
         //}
     }
@@ -1144,7 +1146,7 @@ public class SistemaColeccionJuegos {
             // UPDATE
             SQL = "UPDATE `game_collection` "
                     + "SET `rating`=? "
-                    + "WHERE collection_id = ?";
+                    + "WHERE game_collection.collection_id = ?";
             PreparedStatement insertStmt = conexion.prepareStatement(SQL);
             insertStmt.setInt(1, rating);
             insertStmt.setInt(2, gameID);
